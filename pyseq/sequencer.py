@@ -39,6 +39,7 @@ class Sequencer:
         self.length = 8
         self.prob = [100] * 8
         self.vel = [127] * 8
+        self.octaves = 2  # 2 below, 2 above
         self.idx = 0
         self.scale = []
         self.notes = [self.root] * 8
@@ -76,23 +77,20 @@ class Sequencer:
     
     def getnote(self, value):
         note = self.root
-        temp_scale = self.scale[:]
         possible = []
-        while note < 127:
-            possible.append(note)
-            interval = temp_scale.pop(0)
-            note = self.root + interval
-            temp_scale.append(interval + 12)
-        note = self.root
-        temp_scale = self.scale[:]
-        while note > 0:
-            possible.append(note)
-            interval = temp_scale.pop()
-            note = self.root + interval
-            temp_scale.insert(0, interval - 12)
+        for octave in range(self.octaves):
+            for interval in self.scale:
+                possible.append(self.root + interval + 12 * octave)
+        for octave in range(self.octaves):
+            for interval in self.scale[::-1]:
+                possible.append(self.root - interval - 12 * octave)
         possible = sorted(list(set(possible)))
-        message(possible)
         chosen = int(value * (len(possible) - 1) / 127)
+        choice = possible[chosen]
+        if choice < 0:
+            return 0
+        if choice > 127:
+            return 127
         return possible[chosen]
     
     def handleQueue(self, q):
@@ -116,7 +114,7 @@ class Sequencer:
                     message(f"Probability {idx} changed to {self.prob[idx]}")
                 elif ctrl == "note":
                     self.notes[idx] = self.getnote(value)
-                    # message(f"Note {idx} changed to {self.notes[idx]}")
+                    message(f"Note {idx} changed to {self.notes[idx]}")
                     self.printnotes()
                 elif ctrl == "vel":
                     self.vel[idx] = value
