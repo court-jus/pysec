@@ -64,7 +64,7 @@ class Sequencer:
         else:
             chosen = self.notes[note_idx]
             vel = self.vel[note_idx]
-            note = (1, chosen, vel)
+            note = (0, chosen, vel)
             noteon = alsamidi.noteonevent(*note)
             noteoff = alsamidi.noteoffevent(*note)
             alsaseq.output(noteon)
@@ -88,7 +88,6 @@ class Sequencer:
         while note > 0:
             possible.append(note)
             interval = temp_scale.pop()
-            print(note, interval)
             note = self.root + interval
             temp_scale.insert(0, interval - 12)
         possible = sorted(list(set(possible)))

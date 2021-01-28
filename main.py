@@ -20,11 +20,11 @@ alsaseq.connectfrom(0, 28, 0)
 # alsaseq.connectfrom(0, 130, 0)
 
 def receive(q, debug=False):
+    if debug:
+        print("run receiver")
     while True:
         # Event types:
         # https://www.alsa-project.org/alsa-doc/alsa-lib/seq__event_8h_source.html
-        if debug:
-            print("run receiver")
         (evtype, flags, tag, queue, timestamp, source, destination, data) = alsaseq.input()
         if evtype == 6:  # NOTE
             if debug:
@@ -56,11 +56,12 @@ def receive(q, debug=False):
                 print("stop")
             elif evtype == 35:  # TEMPO
                 print("tempo")
-            elif evtype == 36:  # CLOCK
-                print("clock")
+            # elif evtype == 36:  # CLOCK
+            #     print("clock")
             elif evtype == 37:  # TICK
                 print("tick")
-            print("received", evtype)
+            if evtype != 36:
+                print("received", evtype)
 
 
 
