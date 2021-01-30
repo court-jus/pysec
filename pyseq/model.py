@@ -73,6 +73,7 @@ class SequencerModel:
                 "duration": self.duration,
                 "durations": self.durations,
                 "order": self.order,
+                "ratchets": self.ratchets,
             }, fp, indent=2)
     
     def load(self):
@@ -91,6 +92,7 @@ class SequencerModel:
             self.duration = data.get("duration", 200)
             self.durations = data.get("durations", [64] * 8)
             self.order = data.get("order", "up")
+            self.ratchets = data.get("ratchets", [1] * 8)
 
     def playnote(self, note_idx):
         r = random.randint(0, 99)
@@ -99,18 +101,23 @@ class SequencerModel:
             time.sleep(self.duration / 1000)
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
         else:
-            duration_on = self.durations[note_idx] * self.duration / 127
+            duration_on = (self.durations[note_idx] * self.duration / 127)
+            duration_off = self.duration - duration_on
+            duration_on = duration_on / self.ratchets[note_idx]
+            duration_off = duration_off / self.ratchets[note_idx]
             chosen = self.getnote(self.interval_indexes[note_idx])
             vel = self.vel[note_idx]
             note = (0, chosen, vel)
             noteon = alsamidi.noteonevent(*note)
             noteoff = alsamidi.noteoffevent(*note)
-            alsaseq.output(noteon)
+            self.publish(("message", None, (f"on {duration_on} off {duration_off}")))
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, "*")))
-            time.sleep(duration_on / 1000)
-            alsaseq.output(noteoff)
+            for i in range(self.ratchets[note_idx]):
+                alsaseq.output(noteon)
+                time.sleep(duration_on / 1000)
+                alsaseq.output(noteoff)
+                time.sleep((duration_off) / 1000)
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
-            time.sleep((self.duration - duration_on) / 1000)
     
     def getnotes(self):
         note = self.root
