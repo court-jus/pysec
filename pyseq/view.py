@@ -27,6 +27,8 @@ class SequencerView:
         self.queues = []
         self.running = True
         self.dirty = None
+        self.cursor = [0, 0]
+        self.cursor_max = [7, 3]
 
     def subscribe(self, q):
         self.queues.append(q)
@@ -37,7 +39,6 @@ class SequencerView:
 
     @need_screen
     def eraseline(self, y):
-        return 
         self.screen.move(y, 1)
         self.screen.clrtoeol()
         self.dirty = time.time()
@@ -86,6 +87,18 @@ class SequencerView:
                 if key == "q":
                     self.publish(("exit", None, None))
                     self.running = False
+                elif key == "z":
+                    self.publish(("scalechange", None, 1))
+                elif key == "s":
+                    self.publish(("scalechange", None, -1))
+                elif key == "e":
+                    self.publish(("orderchange", None, 1))
+                elif key == "d":
+                    self.publish(("orderchange", None, -1))
+                elif key == "r":
+                    self.publish(("speedchange", None, 1))
+                elif key == "f":
+                    self.publish(("speedchange", None, -1))
                 else:
                     self.publish(("keypress", 0, key))
             

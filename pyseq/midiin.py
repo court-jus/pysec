@@ -33,10 +33,10 @@ class MidiInCtrl:
             q.put(message)
 
     def receive(self, debug=False):
-        running = True
+        self.running = True
         if debug:
             print("run receiver")
-        while running:
+        while self.running:
             # Read the queue
             try:
                 msg = self.in_q.get_nowait()
@@ -46,6 +46,8 @@ class MidiInCtrl:
                 ctrl, idx, value = msg
                 if ctrl == "exit":
                     self.running = False
+
+            # Read Midi events input
             # Event types:
             # https://www.alsa-project.org/alsa-doc/alsa-lib/seq__event_8h_source.html
             evt = parse_event(*alsaseq.input(), debug=debug)
@@ -86,7 +88,7 @@ class MidiInCtrl:
                         self.publish(("orderchange", 0, -1))
                     if note == EXIT:
                         self.publish(("exit", 0, 0))
-                        running = False
+                        self.running = False
                     self.publish(("message", None, str(evt)))
             elif evt["note"]:
                 # Root note change from another controller

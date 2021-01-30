@@ -46,10 +46,10 @@ class SequencerModel:
 
     def __init__(self):
         self.in_q = Queue()
+        self.queues = []
         self.idx = 0
         self.current_page = 0
         self.print_note_width = 4
-        self.queues = []
         self.load()
         self.running = True
 
@@ -110,13 +110,12 @@ class SequencerModel:
             note = (0, chosen, vel)
             noteon = alsamidi.noteonevent(*note)
             noteoff = alsamidi.noteoffevent(*note)
-            self.publish(("message", None, (f"on {duration_on} off {duration_off}")))
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, "*")))
             for i in range(self.ratchets[note_idx]):
                 alsaseq.output(noteon)
                 time.sleep(duration_on / 1000)
                 alsaseq.output(noteoff)
-                time.sleep((duration_off) / 1000)
+                time.sleep(duration_off / 1000)
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
     
     def getnotes(self):
@@ -187,7 +186,6 @@ class SequencerModel:
             else:
                 ctrl, idx, value = msg
                 if ctrl == "root":
-                    old_root = self.root
                     self.root = value
                     self.printdetails()
                     self.printnotes()
@@ -240,7 +238,6 @@ class SequencerModel:
         logger.info("Exit handle queue in model")
 
     def emit(self):
-        running = True
         while self.running:
             self.idx = dict(ORDER)[self.order](self.idx, len(self.interval_indexes))
             self.playnote(self.idx)
