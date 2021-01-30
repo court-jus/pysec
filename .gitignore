@@ -1,3 +1,4 @@
 .venv
 current.json
 __pycache__
+debug.log
