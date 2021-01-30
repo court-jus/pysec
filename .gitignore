@@ -1,1 +1,3 @@
 .venv
+current.json
+__pycache__
