@@ -4,46 +4,40 @@ import random
 import time
 import alsamidi
 import alsaseq
+import logging
 import sys
 from queue import Queue, Empty
 
-def flush():
-    sys.stdout.write(f"\033[20;20f ")
-    sys.stdout.flush()
-
-def clear():
-    sys.stdout.write("\033[2J")
-    flush()
-
-def printat(x, y, char):
-    sys.stdout.write(f"\033[{y};{x}f{char}")
-    flush()
-
-def eraseline(y, width=100):
-    sys.stdout.write(f"\033[{y};0f" + " " * width)
-    sys.stdout.write(f"\033[2K")
-    flush()
-
-def message(text):
-    eraseline(10, 100)
-    printat(1, 10, text)
+from pyseq.events import STOP
 
 SCALES = [
-    ("minor", [0, 2, 3, 5, 7, 9, 11]),
+    ("minor", [0, 2, 3, 5, 7, 8, 10]),
     ("major", [0, 2, 4, 5, 7, 9, 11]),
+    ("raga gandharavam", [0, 1, 3, 5, 7, 10]),
+    ("blues phrygian", [0, 1, 3, 5, 6, 7, 10]),
 ]
 PAGES = 2
 
+logger = logging.getLogger()
 
-class Sequencer:
+
+class SequencerModel:
 
     def __init__(self):
-        clear()
+        self.in_q = Queue()
         self.idx = 0
         self.current_page = 0
         self.print_note_width = 4
+        self.queues = []
         self.load()
         self.running = True
+
+    def subscribe(self, q):
+        self.queues.append(q)
+    
+    def publish(self, message):
+        for q in self.queues:
+            q.put(message)
 
     def save(self):
         with open("current.json", "w") as fp:
@@ -74,60 +68,25 @@ class Sequencer:
             self.interval_indexes = data["interval_indexes"]
             self.duration = data["duration"]
             self.durations = data["durations"]
-        self.printall()
 
-    def printall(self):
-        self.printdetails()
-        self.printnotes()
-        self.printvel()
-        self.printprob()
-        self.printdurations()
-
-    def printdetails(self):
-        eraseline(1)
-        printat(1, 1, f"{self.root:4} {self.octaves:4} {self.scale:10}")
-
-    def printnotes(self):
-        eraseline(2)
-        for idx, interval_index in enumerate(self.interval_indexes):
-            realnote = self.getnote(interval_index)
-            printat(idx * self.print_note_width + 1, 2, f"{realnote:4}")
-
-    def printvel(self):
-        eraseline(4)
-        for idx, vel in enumerate(self.vel):
-            printat(idx * self.print_note_width + 1, 4, f"{vel:4}")
-
-    def printprob(self):
-        eraseline(5)
-        for idx, prob in enumerate(self.prob):
-            printat(idx * self.print_note_width + 1, 5, f"{prob:4}")
-
-    def printdurations(self):
-        eraseline(6)
-        for idx, duration in enumerate(self.durations):
-            printat(idx * self.print_note_width + 1, 6, f"{duration:4}")
-    
     def playnote(self, note_idx):
         r = random.randint(0, 99)
         if r >= self.prob[note_idx]:
-            printat(note_idx * self.print_note_width + 2, 3, ".")
+            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, ".")))
             time.sleep(self.duration / 1000)
-            printat(note_idx * self.print_note_width + 2, 3, " ")
+            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
         else:
-            duration_on = self.durations[note_idx] * 100 / self.duration
-            message(f"on {duration_on} off {self.duration - duration_on}-
-            ")
-            c6/5hosen = self.getnote(self.interval_indexes[note_idx])
+            duration_on = self.durations[note_idx] * self.duration / 127
+            chosen = self.getnote(self.interval_indexes[note_idx])
             vel = self.vel[note_idx]
             note = (0, chosen, vel)
             noteon = alsamidi.noteonevent(*note)
             noteoff = alsamidi.noteoffevent(*note)
             alsaseq.output(noteon)
-            printat(note_idx * self.print_note_width + 2, 3, "*")
+            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, "*")))
             time.sleep(duration_on / 1000)
             alsaseq.output(noteoff)
-            printat(note_idx * self.print_note_width + 2, 3, " ")
+            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
             time.sleep((self.duration - duration_on) / 1000)
     
     def getnotes(self):
@@ -141,8 +100,6 @@ class Sequencer:
                 possible.append(self.root - interval - 12 * octave)
         return sorted(list(set(possible)))
 
-            duration_off = self.duration - duration_on
-            duration_off = self.duration - duration_on
     def getnote(self, interval_index):
         possible = self.getnotes()
         root_idx = possible.index(self.root)
@@ -150,18 +107,50 @@ class Sequencer:
         shifted_idx = interval_index
         chosen = root_idx + int(shifted_idx * (len(note_range) - 1) / 64)
         choice = possible[chosen]
-        # message(f"idx {interval_index} root {root_idx} shifted {shifted_idx} chosen {chosen} choice {choice}")
         if choice < 0:
             choice = 0
         if choice > 127:
             choice = 127
         return choice
     
-    def handleQueue(self, q):
-        while se+-é
-         lf.running:
+    def message(self, value):
+        self.publish(("message", None, value))
+    
+    def printall(self):
+        self.printdetails()
+        self.printnotes()
+        self.printvel()
+        self.printprob()
+        self.printdurations()
+
+    def printdetails(self):
+        self.publish(("eraseline", None, 1))
+        self.publish(("printat", None, (1, 1, f"{self.root:4} {self.octaves:4} {self.scale:10} {self.duration:4}")))
+
+    def printnotes(self):
+        message = ""
+        for idx, interval_index in enumerate(self.interval_indexes):
+            realnote = self.getnote(interval_index)
+            message += f"{realnote:4}"
+        self.publish(("printat", None, (1, 2, message)))
+
+    def printlist(self, y, values):
+        self.publish(("printat", None, (1, y, "".join(f"{value:4}" for value in values))))
+
+    def printvel(self):
+        self.printlist(4, self.vel)
+
+    def printprob(self):
+        self.printlist(5, self.prob)
+
+    def printdurations(self):
+        self.printlist(6, self.durations)
+    
+    def handleQueue(self):
+        self.printall()
+        while self.running:
             try:
-                msg = q.get_nowait()
+                msg = self.in_q.get_nowait()
             except Empty:
                 pass
             else:
@@ -176,8 +165,7 @@ class Sequencer:
                         self.interval_indexes[idx] = value - 64
                         self.printnotes()
                     elif self.current_page == 1:
-                        self.durations[idx] = value
-                        self.printdurations()
+                        pass
                 elif ctrl == "cc2":
                     if self.current_page == 0:
                         self.vel[idx] = value
@@ -186,26 +174,39 @@ class Sequencer:
                         pass
                 elif ctrl == "cc3":
                     if self.current_page == 0:
+                        self.durations[idx] = value
+                        self.printdurations()
+                    elif self.current_page == 1:
+                        pass
+                elif ctrl == "cc4":
+                    if self.current_page == 0:
                         self.prob[idx] = int(value / 127 * 100)
                         self.printprob()
                     elif self.current_page == 1:
                         pass
                 elif ctrl == "pagechange":
                     self.current_page = (self.current_page + value) % PAGES
-                    message(f"Page change {self.current_page}")
+                    self.message(f"Page change {self.current_page}")
                 elif ctrl == "scalechange":
                     scale_idx = [s[0] for s in SCALES].index(self.scale)
                     scale_idx = scale_idx + value
                     self.scale = SCALES[scale_idx % len(SCALES)][0]
                     self.printdetails()
                     self.printnotes()
+                elif ctrl == "speedchange":
+                    self.duration += value
+                    self.printdetails()
                 elif ctrl == "exit":
-                    message(f"exit")
+                    self.message(f"exit")
+                    alsaseq.output((STOP,0,0,0,(0,0),(0,0),(0,0),0))
                     self.running = False
                 self.save()
+        logger.info("Exit handle queue in model")
 
     def emit(self):
+        running = True
         while self.running:
             self.idx += 1
             note_idx = self.idx % len(self.interval_indexes)
             self.playnote(note_idx)
+        logger.info("Exit emit")
