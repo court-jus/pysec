@@ -11,10 +11,24 @@ from queue import Queue, Empty
 from pyseq.events import STOP
 
 SCALES = [
-    ("minor", [0, 2, 3, 5, 7, 8, 10]),
-    ("major", [0, 2, 4, 5, 7, 9, 11]),
-    ("raga gandharavam", [0, 1, 3, 5, 7, 10]),
+    ("acoustic", [0, 2, 4, 6, 7, 9, 10]),
     ("blues phrygian", [0, 1, 3, 5, 6, 7, 10]),
+    ("blues", [0, 3, 5, 6, 7, 10]),
+    ("dorian", [0, 2, 3, 5, 7, 9, 10]),
+    ("enigmatic", [0, 1, 4, 6, 8, 10, 11]),
+    ("flamenco", [0, 1, 4, 5, 7, 8, 11]),
+    ("hirajoshi", [0, 4, 6, 7, 11]),
+    ("major", [0, 2, 4, 5, 7, 9, 11]),
+    ("major locrian", [0, 2, 4, 5, 6, 8, 10]),
+    ("major pentatonic", [0, 2, 4, 7, 9]),
+    ("minor pentatonic", [0, 3, 5, 7, 10]),
+    ("natural minor", [0, 2, 3, 5, 7, 8, 10]),
+    ("octatonic1", [0, 2, 3, 5, 6, 8, 9, 11]),
+    ("octatonic2", [0, 1, 3, 4, 6, 7, 9, 10]),
+    ("persian", [0, 1, 4, 5, 6, 8, 11]),
+    ("raga gandharavam", [0, 1, 3, 5, 7, 10]),
+    ("ukrainian", [0, 2, 3, 6, 7, 9, 10]),
+    ("tritone", [0, 1, 4, 6, 7, 10]),
 ]
 PAGES = 2
 
