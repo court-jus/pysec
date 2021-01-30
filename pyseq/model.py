@@ -30,6 +30,13 @@ SCALES = [
     ("ukrainian", [0, 2, 3, 6, 7, 9, 10]),
     ("tritone", [0, 1, 4, 6, 7, 10]),
 ]
+
+ORDER = [
+    ("up", lambda idx, length: (idx + 1) % length),
+    ("dn", lambda idx, length: (idx - 1) % length),
+    ("rnd", lambda idx, length: random.randint(0, length - 1)),
+]
+
 PAGES = 2
 
 logger = logging.getLogger()
@@ -65,6 +72,7 @@ class SequencerModel:
                 "interval_indexes": self.interval_indexes,
                 "duration": self.duration,
                 "durations": self.durations,
+                "order": self.order,
             }, fp, indent=2)
     
     def load(self):
@@ -73,15 +81,16 @@ class SequencerModel:
             filename = "current.json"
         with open(filename, "r") as fp:
             data = json.load(fp)
-            self.root = data["root"]
-            self.length = data["length"]
-            self.prob = data["prob"]
-            self.vel = data["vel"]
-            self.octaves = data["octaves"]
-            self.scale = data["scale"]
-            self.interval_indexes = data["interval_indexes"]
-            self.duration = data["duration"]
-            self.durations = data["durations"]
+            self.root = data.get("root", 62)
+            self.length = data.get("length", 8)
+            self.prob = data.get("prob", [100] * 8)
+            self.vel = data.get("vel", [100] * 8)
+            self.octaves = data.get("octaves", 2)
+            self.scale = data.get("scale", "major")
+            self.interval_indexes = data.get("interval_indexes", [0] * 8)
+            self.duration = data.get("duration", 200)
+            self.durations = data.get("durations", [64] * 8)
+            self.order = data.get("order", "up")
 
     def playnote(self, note_idx):
         r = random.randint(0, 99)
@@ -139,7 +148,8 @@ class SequencerModel:
 
     def printdetails(self):
         self.publish(("eraseline", None, 1))
-        self.publish(("printat", None, (1, 1, f"{self.root:4} {self.octaves:4} {self.scale:10} {self.duration:4}")))
+        message = f"{self.root:4} {self.octaves:2} {self.scale:10} {self.duration:4} {self.order:4}"
+        self.publish(("printat", None, (1, 1, message)))
 
     def printnotes(self):
         message = ""
@@ -207,6 +217,11 @@ class SequencerModel:
                     self.scale = SCALES[scale_idx % len(SCALES)][0]
                     self.printdetails()
                     self.printnotes()
+                elif ctrl == "orderchange":
+                    order_idx = [o[0] for o in ORDER].index(self.order)
+                    order_idx = order_idx + value
+                    self.order = ORDER[order_idx % len(ORDER)][0]
+                    self.printdetails()
                 elif ctrl == "speedchange":
                     self.duration += value
                     self.printdetails()
@@ -220,7 +235,6 @@ class SequencerModel:
     def emit(self):
         running = True
         while self.running:
-            self.idx += 1
-            note_idx = self.idx % len(self.interval_indexes)
-            self.playnote(note_idx)
+            self.idx = dict(ORDER)[self.order](self.idx, len(self.interval_indexes))
+            self.playnote(self.idx)
         logger.info("Exit emit")

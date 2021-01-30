@@ -14,6 +14,8 @@ SCALE_UP = 42
 SCALE_DN = 74
 SPEED_UP = 43
 SPEED_DN = 75
+ORDER_UP = 44
+ORDER_DN = 76
 EXIT = 106
 
 
@@ -78,6 +80,10 @@ class MidiInCtrl:
                         self.publish(("speedchange", 0, 10))
                     if note == SPEED_DN:
                         self.publish(("speedchange", 0, -10))
+                    if note == ORDER_UP:
+                        self.publish(("orderchange", 0, 1))
+                    if note == ORDER_DN:
+                        self.publish(("orderchange", 0, -1))
                     if note == EXIT:
                         self.publish(("exit", 0, 0))
                         running = False
