@@ -28,7 +28,7 @@ class SequencerView:
         self.running = True
         self.dirty = None
         self.cursor = [0, 0]
-        self.cursor_max = [7, 3]
+        self.cursor_max = [8, 4]
 
     def subscribe(self, q):
         self.queues.append(q)
@@ -55,6 +55,18 @@ class SequencerView:
         self.screen.addstr(y, x, char)
         self.dirty = time.time()
 
+    def get_virtual_cursor(self):
+        x, y = self.cursor
+        y = y + 3 if y > 0 else 2
+        x = (x + 1) * 4
+        return y, x
+
+    def change_at_cursor(self, incr=1):
+        ctrl = "cc" + str(self.cursor[1] + 1)
+        idx = self.cursor[0]
+        val = ("relative", incr)
+        self.publish((ctrl, idx, val))
+
     def _run(self, stdscr):
         self.screen = curses.initscr()
         # Clear screen
@@ -80,13 +92,29 @@ class SequencerView:
 
             # Read the keyboard
             try:
-                key = self.screen.getkey(15, 15)
+                key = self.screen.getkey(*self.get_virtual_cursor())
             except curses.error:
                 pass
             else:
                 if key == "q":
                     self.publish(("exit", None, None))
                     self.running = False
+                elif key == "KEY_LEFT":
+                    self.cursor[0] = (self.cursor[0] - 1) % self.cursor_max[0]
+                elif key == "KEY_RIGHT":
+                    self.cursor[0] = (self.cursor[0] + 1) % self.cursor_max[0]
+                elif key == "KEY_UP":
+                    self.cursor[1] = (self.cursor[1] - 1) % self.cursor_max[1]
+                elif key == "KEY_DOWN":
+                    self.cursor[1] = (self.cursor[1] + 1) % self.cursor_max[1]
+                elif key == "+":
+                    self.change_at_cursor(1)
+                elif key == "-":
+                    self.change_at_cursor(-1)
+                elif key == "KEY_PPAGE":
+                    self.change_at_cursor(10)
+                elif key == "KEY_NPAGE":
+                    self.change_at_cursor(-10)
                 elif key == "z":
                     self.publish(("scalechange", None, 1))
                 elif key == "s":
@@ -100,7 +128,7 @@ class SequencerView:
                 elif key == "f":
                     self.publish(("speedchange", None, -1))
                 else:
-                    self.publish(("keypress", 0, key))
+                    self.message(key)
             
             # Refresh the screen
             if self.dirty is not None and time.time() - self.dirty > 5:

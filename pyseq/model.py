@@ -170,12 +170,12 @@ class SequencerModel:
     def printvel(self):
         self.printlist(4, self.vel)
 
-    def printprob(self):
-        self.printlist(5, self.prob)
-
     def printdurations(self):
-        self.printlist(6, self.durations)
+        self.printlist(5, self.durations)
     
+    def printprob(self):
+        self.printlist(6, self.prob)
+
     def handleQueue(self):
         self.printall()
         while self.running:
@@ -190,29 +190,29 @@ class SequencerModel:
                     self.printdetails()
                     self.printnotes()
                 elif ctrl == "cc1":
-                    if self.current_page == 0:
+                    if isinstance(value, tuple) and value[0] == "relative":
+                        self.interval_indexes[idx] = min(127, max(0, self.interval_indexes[idx] + value[1]))
+                    else:
                         self.interval_indexes[idx] = value - 64
-                        self.printnotes()
-                    elif self.current_page == 1:
-                        pass
+                    self.printnotes()
                 elif ctrl == "cc2":
-                    if self.current_page == 0:
+                    if isinstance(value, tuple) and value[0] == "relative":
+                        self.vel[idx] = min(127, max(0, self.vel[idx] + value[1]))
+                    else:
                         self.vel[idx] = value
-                        self.printvel()
-                    elif self.current_page == 1:
-                        pass
+                    self.printvel()
                 elif ctrl == "cc3":
-                    if self.current_page == 0:
+                    if isinstance(value, tuple) and value[0] == "relative":
+                        self.durations[idx] = min(127, max(0, self.durations[idx] + value[1]))
+                    else:
                         self.durations[idx] = value
-                        self.printdurations()
-                    elif self.current_page == 1:
-                        pass
+                    self.printdurations()
                 elif ctrl == "cc4":
-                    if self.current_page == 0:
+                    if isinstance(value, tuple) and value[0] == "relative":
+                        self.prob[idx] = min(100, max(0, self.prob[idx] + value[1]))
+                    else:
                         self.prob[idx] = int(value / 127 * 100)
-                        self.printprob()
-                    elif self.current_page == 1:
-                        pass
+                    self.printprob()
                 elif ctrl == "pagechange":
                     self.current_page = (self.current_page + value) % PAGES
                     self.message(f"Page change {self.current_page}")
