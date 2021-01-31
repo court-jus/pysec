@@ -32,9 +32,11 @@ SCALES = [
 ]
 
 ORDER = [
-    ("up", lambda idx, length: (idx + 1) % length),
-    ("dn", lambda idx, length: (idx - 1) % length),
-    ("rnd", lambda idx, length: random.randint(0, length - 1)),
+    ("up", lambda idx, length: ((idx + 1) % length, (idx + 1) % length)),
+    ("dn", lambda idx, length: ((idx - 1) % length, (idx - 1) % length)),
+    ("frnd", lambda idx, length: (random.randint(0, length - 1), random.randint(0, length - 1))),
+    ("urnd", lambda idx, length: (random.randint(0, length - 1),  (idx + 1) % length)),
+    ("drnd", lambda idx, length: (random.randint(0, length - 1),  (idx - 1) % length)),
 ]
 
 PAGES = 2
@@ -74,6 +76,7 @@ class SequencerModel:
                 "durations": self.durations,
                 "order": self.order,
                 "ratchets": self.ratchets,
+                "outchannel": self.outchannel,
             }, fp, indent=2)
     
     def load(self):
@@ -93,29 +96,32 @@ class SequencerModel:
             self.durations = data.get("durations", [64] * 8)
             self.order = data.get("order", "up")
             self.ratchets = data.get("ratchets", [1] * 8)
+            self.outchannel = data.get("outchannel", 0)
 
-    def playnote(self, note_idx):
+    def playnote(self, note_idx, step_idx):
         r = random.randint(0, 99)
-        if r >= self.prob[note_idx]:
-            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, ".")))
+        if r >= self.prob[step_idx]:
+            self.publish(("printat", None, (step_idx * self.print_note_width + 2, 4, ".")))
             time.sleep(self.duration / 1000)
-            self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
+            self.publish(("printat", None, (step_idx * self.print_note_width + 2, 4, " ")))
         else:
-            duration_on = (self.durations[note_idx] * self.duration / 127)
+            duration_on = (self.durations[step_idx] * self.duration / 127)
             duration_off = self.duration - duration_on
-            duration_on = duration_on / self.ratchets[note_idx]
-            duration_off = duration_off / self.ratchets[note_idx]
+            duration_on = duration_on / self.ratchets[step_idx]
+            duration_off = duration_off / self.ratchets[step_idx]
             chosen = self.getnote(self.interval_indexes[note_idx])
-            vel = self.vel[note_idx]
-            note = (0, chosen, vel)
+            vel = self.vel[step_idx]
+            note = (self.outchannel, chosen, vel)
             noteon = alsamidi.noteonevent(*note)
             noteoff = alsamidi.noteoffevent(*note)
+            self.publish(("printat", None, (step_idx * self.print_note_width + 2, 4, "*")))
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, "*")))
-            for i in range(self.ratchets[note_idx]):
+            for i in range(self.ratchets[step_idx]):
                 alsaseq.output(noteon)
                 time.sleep(duration_on / 1000)
                 alsaseq.output(noteoff)
                 time.sleep(duration_off / 1000)
+            self.publish(("printat", None, (step_idx * self.print_note_width + 2, 4, " ")))
             self.publish(("printat", None, (note_idx * self.print_note_width + 2, 3, " ")))
     
     def getnotes(self):
@@ -151,10 +157,11 @@ class SequencerModel:
         self.printvel()
         self.printprob()
         self.printdurations()
+        self.printratchets()
 
     def printdetails(self):
         self.publish(("eraseline", None, 1))
-        message = f"{self.root:4} {self.octaves:2} {self.scale:10} {self.duration:4} {self.order:4}"
+        message = f"{self.root:4} {self.octaves:2} {self.scale:10} {self.duration:4} {self.order:4} {self.outchannel:4}"
         self.publish(("printat", None, (1, 1, message)))
 
     def printnotes(self):
@@ -168,13 +175,16 @@ class SequencerModel:
         self.publish(("printat", None, (1, y, "".join(f"{value:4}" for value in values))))
 
     def printvel(self):
-        self.printlist(4, self.vel)
+        self.printlist(5, self.vel)
 
     def printdurations(self):
-        self.printlist(5, self.durations)
+        self.printlist(6, self.durations)
     
     def printprob(self):
-        self.printlist(6, self.prob)
+        self.printlist(7, self.prob)
+
+    def printratchets(self):
+        self.printlist(8, self.ratchets)
 
     def handleQueue(self):
         self.printall()
@@ -230,6 +240,14 @@ class SequencerModel:
                 elif ctrl == "speedchange":
                     self.duration += value
                     self.printdetails()
+                elif ctrl == "ratchetchange":
+                    self.ratchets[idx] = ((self.ratchets[idx] + value) % 4)
+                    if self.ratchets[idx] == 0:
+                        self.ratchets[idx] = 4
+                    self.printratchets()
+                elif ctrl == "channelchange":
+                    self.outchannel = (self.outchannel + value) % 17
+                    self.printdetails()
                 elif ctrl == "exit":
                     self.message(f"exit")
                     alsaseq.output((STOP,0,0,0,(0,0),(0,0),(0,0),0))
@@ -239,6 +257,6 @@ class SequencerModel:
 
     def emit(self):
         while self.running:
-            self.idx = dict(ORDER)[self.order](self.idx, len(self.interval_indexes))
-            self.playnote(self.idx)
+            note_idx, self.idx = dict(ORDER)[self.order](self.idx, len(self.interval_indexes))
+            self.playnote(note_idx, self.idx)
         logger.info("Exit emit")

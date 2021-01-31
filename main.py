@@ -10,8 +10,8 @@ from pyseq.model import SequencerModel
 from pyseq.view import SequencerView
 
 
-FROM = [(28, 0)]
-TO = [(129, 0)]
+FROM = [(28, 0), (32, 0)]
+TO = [(129, 0), (32, 0)]
 
 
 alsaseq.client("pyseq", 1, 1, 0)

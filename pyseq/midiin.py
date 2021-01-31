@@ -16,6 +16,8 @@ SPEED_UP = 43
 SPEED_DN = 75
 ORDER_UP = 44
 ORDER_DN = 76
+CHANNEL_CHANGE = 105
+RATCHETS = [57, 58, 59, 60, 89, 90, 91, 92]
 EXIT = 106
 
 
@@ -72,20 +74,26 @@ class MidiInCtrl:
                         print(evt)
                     if note == PAGE_UP:
                         self.publish(("pagechange", 0, 1))
-                    if note == PAGE_DN:
+                    elif note == PAGE_DN:
                         self.publish(("pagechange", 0, -1))
-                    if note == SCALE_UP:
+                    elif note == SCALE_UP:
                         self.publish(("scalechange", 0, 1))
-                    if note == SCALE_DN:
+                    elif note == SCALE_DN:
                         self.publish(("scalechange", 0, -1))
-                    if note == SPEED_UP:
+                    elif note == SPEED_UP:
                         self.publish(("speedchange", 0, 10))
-                    if note == SPEED_DN:
+                    elif note == SPEED_DN:
                         self.publish(("speedchange", 0, -10))
-                    if note == ORDER_UP:
+                    elif note == ORDER_UP:
                         self.publish(("orderchange", 0, 1))
-                    if note == ORDER_DN:
+                    elif note == ORDER_DN:
                         self.publish(("orderchange", 0, -1))
+                    elif note == CHANNEL_CHANGE:
+                        self.publish(("channelchange", 0, 1))
+                    elif note in RATCHETS:
+                        idx = note - 57 if note < 89 else note - 85
+                        self.publish(("ratchetchange", idx, 1))
+
                     if note == EXIT:
                         self.publish(("exit", 0, 0))
                         self.running = False
@@ -94,6 +102,5 @@ class MidiInCtrl:
                 # Root note change from another controller
                 if debug:
                     print("note", evt)
-                note = data[1]
                 self.publish(("root", 0, evt["note"]["note"]))
 
